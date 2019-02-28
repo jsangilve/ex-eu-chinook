@@ -6,6 +6,6 @@ defmodule Chinook.Schemas.Album do
   @primary_key {:id, :integer, autogenerate: false, source: :AlbumId}
   schema "Album" do
     field(:title, :string, source: :Title)
-    belongs_to(:artist, Artist, foreign_key: :ArtistId)
+    belongs_to(:artist, Artist, source: :ArtistId)
   end
 end
