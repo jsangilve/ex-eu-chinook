@@ -2,7 +2,7 @@ defmodule Chinook.Repo.Migrations.CreateUsers do
   use Ecto.Migration
 
   def up do
-    create table("user") do
+    create table("app_user") do
       add :username, :string
       add :email, :string
       add :role, :string
@@ -12,6 +12,6 @@ defmodule Chinook.Repo.Migrations.CreateUsers do
   end
 
   def down do
-    drop table("user")
+    drop table("app_user")
   end
 end
