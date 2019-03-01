@@ -7,6 +7,6 @@ defmodule Chinook.Schemas.Artist do
   schema "Artist" do
     field(:name, :string, source: :Name)
 
-    has_many(:albums, Album, foreign_key: :ArtistId)
+    has_many(:albums, Album)
   end
 end
