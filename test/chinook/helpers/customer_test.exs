@@ -19,8 +19,8 @@ defmodule Chinook.Schemas.CustomerTest do
     |> Repo.all()
     |> Enum.each(fn employee ->
       assistants =
-        from(e in Employee, where: e.reports_to_id == ^employee.id, select: count())
-        |> Repo.all()
+        from(e in Employee, where: e.reports_to_id == ^employee.id)
+        |> Repo.aggregate(:count, :id)
 
       role =
         if assistants > 0 do
@@ -63,7 +63,8 @@ defmodule Chinook.Schemas.CustomerTest do
 
     test "An agent can only get associated customers" do
       # let's user employee 2
-      %Employee{user: user} = Repo.get(Employee, 4) |> Repo.preload(:user)
+      %Employee{user: user} = e = Repo.get(Employee, 4) |> Repo.preload(:user)
+      IO.inspect(e)
 
       assert length(CustomerH.all(user)) == 20
     end
