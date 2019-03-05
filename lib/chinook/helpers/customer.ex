@@ -6,7 +6,7 @@ defmodule Chinook.Helpers.Customer do
   import Ecto.Query
 
   @doc """
-  Lists customer accessible to the user
+  Lists customer accessible to the user.
   """
   @spec all(Ecto.Schema.t()) :: [Ecto.Schema.t()]
   def all(%User{role: "supervisor", id: usr_id}) do
