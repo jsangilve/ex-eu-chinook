@@ -26,6 +26,55 @@ defmodule Chinook.Helpers.Invoice do
     |> do_query
   end
 
+  @doc """
+  Allows more complex comparisons over "special" parameters as
+  `:date` or `:total`, e.g. `:date__gte`, date greater than or
+  equal to; `:total_lt`, total less than, etc.
+  """
+  @spec query_special_params(Ecto.Query.t(), Keyword.t()) :: Ecto.Query.t()
+  def query_special_params(query, []), do: query
+
+  def query_special_params(query, params) do
+    Enum.reduce(params, query, fn {key, value}, acc ->
+      query_field(acc, key, value)
+    end)
+  end
+
+  @doc """
+  Filters invoices based on the fields of the associated schema
+  Customer.
+  """
+  @spec query_association(Ecto.Query.t(), Keyword.t()) :: Ecto.Query.t()
+  def query_association(query, []), do: query
+
+  def query_association(query, params) do
+    query = query_join(query, :customer)
+
+    Enum.reduce(params, query, fn {key, value}, acc ->
+      # TODO let's improve this to re-use query_field
+      from([_q, customer: c] in acc, where: field(c, ^key) == ^value)
+    end)
+  end
+
+  @spec check_access(Ecto.Query.t(), Ecto.Schema.t()) :: Ecto.Query.t()
+  def check_access(query, nil), do: query
+
+  def check_access(query, %User{role: "admin"}), do: query
+
+  def check_access(query, %User{role: "customer"}) do
+    # prevent from joining Employee (just for performance reasons)
+    do_check_access(query, "customer")
+  end
+
+  def check_access(query, %User{role: role}) do
+    query
+    |> query_join(:employee)
+    |> do_check_access(role)
+  end
+
+  #########
+  # Helpers
+
   defp do_query(params) do
     base_params = Keyword.take(params, @base_params)
     special_params = Keyword.take(params, @special_params)
@@ -51,66 +100,15 @@ defmodule Chinook.Helpers.Invoice do
     |> check_access(Keyword.get(params, :user))
   end
 
-  @doc """
-  Allows more complex comparison over "special" parameters as `:date` or `:total`,
-  e.g. `:date__gte`, date greater than or equal to; `:total_lt`, total less than, etc.
-  """
-  @spec query_special_params(Ecto.Query.t(), Keyword.t()) :: Ecto.Query.t()
-  def query_special_params(query, []), do: query
+  defp query_op(:lt, key, value), do: dynamic([q], field(q, ^key) < ^value)
 
-  def query_special_params(query, params) do
-    Enum.reduce(params, query, fn {key, value}, acc ->
-      query_field(acc, key, value)
-    end)
-  end
+  defp query_op(:lte, key, value), do: dynamic([q], field(q, ^key) <= ^value)
 
-  defp query_field(query, key, value) do
-    # look for the operator as a suffix
-    split_key = key |> to_string() |> String.split("__", parts: 2)
+  defp query_op(:gt, key, value), do: dynamic([q], field(q, ^key) > ^value)
 
-    {field, op} =
-      case split_key do
-        [str_key, str_op] ->
-          {String.to_existing_atom(str_key), String.to_existing_atom(str_op)}
+  defp query_op(:gte, key, value), do: dynamic([q], field(q, ^key) >= ^value)
 
-        [str_key] ->
-          {String.to_existing_atom(str_key), :eq}
-      end
-
-    from(query, where: ^query_op(op, field, value))
-  end
-
-  @doc """
-  Filters invoices based on the fields of the associated schema
-  Customer.
-  """
-  @spec query_association(Ecto.Query.t(), Keyword.t()) :: Ecto.Query.t()
-  def query_association(query, []), do: query
-
-  def query_association(query, params) do
-    query = query_join(query, :customer)
-
-    Enum.reduce(params, query, fn {key, value}, acc ->
-      # TODO let's improve this to re-use query_field
-      from([_q, customer: c] in acc, where: field(c, ^key) == ^value)
-    end)
-  end
-
-  @spec check_access(Ecto.Query.t(), Ecto.Schema.t()) :: Ecto.Query.t()
-  def check_access(query, nil), do: query
-
-  def check_access(query, %User{role: "admin"}), do: query
-
-  def check_access(query, %User{role: "customer"}) do
-      # prevent from joining Employee (just for performance reasons)
-      do_check_access(query, "customer")
-  end
-
-  def check_access(query, %User{role: role}) do
-    query
-    |> query_join(:employee)
-    |> do_check_access(role)
-  end
+  defp query_op(_, key, value), do: dynamic([q], field(q, ^key) == ^value)
 
   defp do_check_access(query, %User{id: user_id, role: "supervisor"}) do
     from([i, employee: e] in query,
@@ -145,26 +143,19 @@ defmodule Chinook.Helpers.Invoice do
 
   defp query_join(query, _), do: query
 
-  #########
-  # Helpers
+  defp query_field(query, key, value) do
+    # look for the operator as a suffix
+    split_key = key |> to_string() |> String.split("__", parts: 2)
 
-  defp query_op(:lt, key, value) do
-    dynamic([q], field(q, ^key) < ^value)
-  end
+    {field, op} =
+      case split_key do
+        [str_key, str_op] ->
+          {String.to_existing_atom(str_key), String.to_existing_atom(str_op)}
 
-  defp query_op(:lte, key, value) do
-    dynamic([q], field(q, ^key) <= ^value)
-  end
+        [str_key] ->
+          {String.to_existing_atom(str_key), :eq}
+      end
 
-  defp query_op(:gt, key, value) do
-    dynamic([q], field(q, ^key) > ^value)
-  end
-
-  defp query_op(:gte, key, value) do
-    dynamic([q], field(q, ^key) >= ^value)
-  end
-
-  defp query_op(_, key, value) do
-    dynamic([q], field(q, ^key) == ^value)
+    from(query, where: ^query_op(op, field, value))
   end
 end
