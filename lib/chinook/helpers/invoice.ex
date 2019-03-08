@@ -53,6 +53,8 @@ defmodule Chinook.Helpers.Invoice do
     Enum.reduce(params, query, fn {key, value}, acc ->
       # TODO let's improve this to re-use query_field
       from([_q, customer: c] in acc, where: field(c, ^key) == ^value)
+      #      {op, f_key} = extract_op(key)
+      #      from([_q, customer: c] in acc, where: ^query_op(op, )
     end)
   end
 
@@ -145,17 +147,22 @@ defmodule Chinook.Helpers.Invoice do
 
   defp query_field(query, key, value) do
     # look for the operator as a suffix
-    split_key = key |> to_string() |> String.split("__", parts: 2)
-
-    {field, op} =
-      case split_key do
-        [str_key, str_op] ->
-          {String.to_existing_atom(str_key), String.to_existing_atom(str_op)}
-
-        [str_key] ->
-          {String.to_existing_atom(str_key), :eq}
-      end
+    {op, field} = extract_op(key)
 
     from(query, where: ^query_op(op, field, value))
+  end
+
+  defp extract_op(key) do
+    # look for the operator as a suffix
+    key
+    |> to_string()
+    |> String.split("__", parts: 2)
+    |> case do
+      [str_key, str_op] ->
+        {String.to_existing_atom(str_op), String.to_existing_atom(str_key)}
+
+      [str_key] ->
+        {:eq, String.to_existing_atom(str_key)}
+    end
   end
 end
