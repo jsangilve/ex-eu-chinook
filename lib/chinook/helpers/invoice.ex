@@ -1,7 +1,8 @@
 defmodule Chinook.Helpers.Invoice do
   import Ecto.Query
 
-  alias Chinook.Schemas.{User, Customer, Employee}
+  alias Chinook.Repo
+  alias Chinook.Schemas.{User, Customer, Employee, Invoice}
 
   @base_params [:id, :address, :city, :state, :country]
   @special_params [:date, :total]
@@ -26,6 +27,13 @@ defmodule Chinook.Helpers.Invoice do
     |> do_query
   end
 
+  @spec all(Keyword.t() | map()) :: [Ecto.Schema.t()]
+  def all(params) do
+    params
+    |> query
+    |> Repo.all
+  end
+
   @doc """
   Allows more complex comparisons over "special" parameters as
   `:date` or `:total`, e.g. `:date__gte`, date greater than or
@@ -41,7 +49,7 @@ defmodule Chinook.Helpers.Invoice do
   end
 
   @doc """
-  Filters invoices based on the fields of the associated schema
+  Filters invoices based on the fields of the associated
   Customer.
   """
   @spec query_association(Ecto.Query.t(), Keyword.t()) :: Ecto.Query.t()
@@ -50,28 +58,35 @@ defmodule Chinook.Helpers.Invoice do
   def query_association(query, params) do
     query = query_join(query, :customer)
 
-    Enum.reduce(params, query, fn {key, value}, acc ->
-      # TODO let's improve this to re-use query_field
-      from([_q, customer: c] in acc, where: field(c, ^key) == ^value)
-      #      {op, f_key} = extract_op(key)
-      #      from([_q, customer: c] in acc, where: ^query_op(op, )
+    Enum.reduce(params, query, fn
+      {:customer_id, value}, acc ->
+        from([_q, customer: c] in acc, where: field(c, :id) == ^value)
+
+      {key, value}, acc ->
+        # TODO let's improve this to re-use query_field
+        from([_q, customer: c] in acc, where: field(c, ^key) == ^value)
+        #      {op, f_key} = extract_op(key)
+        #      from([_q, customer: c] in acc, where: ^query_op(op, )
     end)
   end
 
+  @doc """
+  Filters results according to the passed in user's role.
+  """
   @spec check_access(Ecto.Query.t(), Ecto.Schema.t()) :: Ecto.Query.t()
   def check_access(query, nil), do: query
 
   def check_access(query, %User{role: "admin"}), do: query
 
-  def check_access(query, %User{role: "customer"}) do
+  def check_access(query, %User{role: "customer"} = user) do
     # prevent from joining Employee (just for performance reasons)
-    do_check_access(query, "customer")
+    do_check_access(query, user)
   end
 
-  def check_access(query, %User{role: role}) do
+  def check_access(query, user) do
     query
     |> query_join(:employee)
-    |> do_check_access(role)
+    |> do_check_access(user)
   end
 
   #########
@@ -113,8 +128,9 @@ defmodule Chinook.Helpers.Invoice do
   defp query_op(_, key, value), do: dynamic([q], field(q, ^key) == ^value)
 
   defp do_check_access(query, %User{id: user_id, role: "supervisor"}) do
-    from([i, employee: e] in query,
-      where: e.user_id == ^user_id or e.report_to_id == ^user_id
+    from([i, employee: e, customer: c] in query,
+    #      join: e2 in Employee, on: e1.reports_to_id == e.id and
+      where: e.user_id == ^user_id or c.reports_to_id == ^user_id
     )
   end
 
@@ -138,6 +154,8 @@ defmodule Chinook.Helpers.Invoice do
     query =
       if not has_named_binding?(query, :customer) do
         query_join(query, :customer)
+      else
+        query
       end
 
     from([q, customer: c] in query, join: e in Employee, as: :employee, on: c.rep_id == e.id)

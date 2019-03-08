@@ -1,13 +1,14 @@
 defmodule Chinook.Schemas.CustomerTest do
   @moduledoc """
-  These tests rely on exitent database data (NOT A GOOD PRACTICE AT ALL, but enough to
-   show that everything works with this approach).
+  These tests rely on exitent database data (NOT A GOOD PRACTICE AT ALL, 
+  but enough to show that everything works with this approach).
   """
   use ExUnit.Case, async: true
 
   alias Chinook.Repo
   alias Chinook.Schemas.{Customer, User, Employee}
   alias Chinook.Helpers.Customer, as: CustomerH
+  alias Chinook.TestUtils
 
   import Ecto.Query
 
@@ -29,7 +30,7 @@ defmodule Chinook.Schemas.CustomerTest do
           "agent"
         end
 
-      create_user(
+      TestUtils.create_user(
         role,
         "employee_#{employee.id}",
         "employee_#{employee.id}@example.com",
@@ -41,7 +42,7 @@ defmodule Chinook.Schemas.CustomerTest do
     Customer
     |> Repo.all()
     |> Enum.each(fn customer ->
-      create_user(
+      TestUtils.create_user(
         "customer",
         "customer_#{customer.id}",
         "customer_#{customer.id}@example.com",
@@ -75,50 +76,4 @@ defmodule Chinook.Schemas.CustomerTest do
       assert [%Customer{id: ^c_id}] = CustomerH.all(user)
     end
   end
-
-  #########
-  # HELPERS
-
-  defp gen_user(role, username, email, extra) do
-    data =
-      %{username: username, role: role, email: email}
-      |> Map.merge(extra)
-
-    User.changeset(%User{}, data)
-  end
-
-  defp create_user(
-         role,
-         username \\ "c_test_user",
-         email \\ "c_test_email@example.com",
-         data \\ %{}
-       ) do
-    changeset = gen_user(role, username, email, data)
-
-    with {:ok, user} <- Repo.insert(changeset) do
-      associate_record(user, data)
-    end
-  end
-
-  defp associate_record(user, %{employee_id: e_id}) do
-    Repo.get(Employee, e_id)
-    |> Ecto.Changeset.change(%{user_id: user.id})
-    |> Repo.update()
-    |> case do
-      {:ok, _} -> {:ok, user}
-      error -> error
-    end
-  end
-
-  defp associate_record(user, %{customer_id: c_id}) do
-    Repo.get(Customer, c_id)
-    |> Ecto.Changeset.change(%{user_id: user.id})
-    |> Repo.update()
-    |> case do
-      {:ok, _} -> {:ok, user}
-      error -> error
-    end
-  end
-
-  defp associate_record(user, _), do: {:ok, user}
 end
