@@ -51,8 +51,7 @@ defmodule Chinook.Schemas.InvoiceTest do
 
   describe "query/1" do
     test "only list invoices that belong to the customer with id 3" do
-      invoices =
-        InvoiceH.all(customer_id: 3)
+      invoices = InvoiceH.all(customer_id: 3)
 
       assert length(invoices) == 7, "get 7 invoices without checking access"
       assert Enum.all?(invoices, fn %Invoice{customer_id: c_id} -> c_id == 3 end)
@@ -60,8 +59,7 @@ defmodule Chinook.Schemas.InvoiceTest do
       # same result when user is passed in
       %Customer{user: user} = Repo.get(Customer, 3) |> Repo.preload(:user)
 
-      invoices =
-        InvoiceH.all(customer_id: 3, user: user)
+      invoices = InvoiceH.all(customer_id: 3, user: user)
 
       assert length(invoices) == 7
       assert Enum.all?(invoices, fn %Invoice{customer_id: c_id} -> c_id == 3 end)
@@ -100,7 +98,6 @@ defmodule Chinook.Schemas.InvoiceTest do
       invoices = InvoiceH.all(user: user)
       all_invoices = Repo.all(Invoice)
       assert length(invoices) == length(all_invoices)
-
     end
   end
 end

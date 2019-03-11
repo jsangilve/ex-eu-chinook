@@ -13,9 +13,9 @@ defmodule Chinook.Helpers.Customer do
     # lists customers whose agent DIRECTLY report to the given
     # supervisor user or has this user as agent.
     Employee
-    |> join(:inner, [e1], e2 in Employee, on: e2.reports_to_id == e1.id)
+    |> join(:inner, [e1], e2 in Employee, on: e2.reports_to_id == e1.id and e1.user_id == ^usr_id)
     |> join(:inner, [e1, e2], c in Customer, on: c.rep_id == e2.id or c.rep_id == e1.id)
-    |> where([e], e.user_id == ^usr_id)
+    #    |> where([e], e.user_id == ^usr_id)
     |> Repo.all()
   end
 

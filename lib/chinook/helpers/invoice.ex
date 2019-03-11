@@ -31,7 +31,7 @@ defmodule Chinook.Helpers.Invoice do
   def all(params) do
     params
     |> query
-    |> Repo.all
+    |> Repo.all()
   end
 
   @doc """
@@ -58,6 +58,7 @@ defmodule Chinook.Helpers.Invoice do
   def query_association(query, params) do
     query = query_join(query, :customer)
 
+    # TODO this could be written in a simpler way
     Enum.reduce(params, query, fn
       {:customer_id, value}, acc ->
         from([_q, customer: c] in acc, where: field(c, :id) == ^value)
@@ -78,14 +79,10 @@ defmodule Chinook.Helpers.Invoice do
 
   def check_access(query, %User{role: "admin"}), do: query
 
-  def check_access(query, %User{role: "customer"} = user) do
-    # prevent from joining Employee (just for performance reasons)
-    do_check_access(query, user)
-  end
-
   def check_access(query, user) do
     query
-    |> query_join(:employee)
+    |> query_join(:customer)
+    #    |> query_join(:employee)
     |> do_check_access(user)
   end
 
@@ -128,15 +125,18 @@ defmodule Chinook.Helpers.Invoice do
   defp query_op(_, key, value), do: dynamic([q], field(q, ^key) == ^value)
 
   defp do_check_access(query, %User{id: user_id, role: "supervisor"}) do
-    from([i, employee: e, customer: c] in query,
-    #      join: e2 in Employee, on: e1.reports_to_id == e.id and
-      where: e.user_id == ^user_id or c.reports_to_id == ^user_id
+    from([i, customer: c] in query,
+      join: e1 in Employee,
+      on: c.rep_id == e1.id,
+      join: e2 in Employee,
+      on: e2.user_id == ^user_id and (e1.user_id == e2.user_id or e1.reports_to_id == e2.id)
     )
   end
 
   defp do_check_access(query, %User{id: user_id, role: "agent"}) do
-    from([i, employee: e] in query,
-      where: e.user_id == ^user_id
+    from([customer: c] in query,
+      join: e in Employee,
+      on: c.rep_id == e.id and e.user_id == ^user_id
     )
   end
 
@@ -147,18 +147,11 @@ defmodule Chinook.Helpers.Invoice do
   end
 
   defp query_join(query, :customer) do
-    from(q in query, join: c in Customer, as: :customer, on: q.customer_id == c.id)
-  end
-
-  defp query_join(query, :employee) do
-    query =
-      if not has_named_binding?(query, :customer) do
-        query_join(query, :customer)
-      else
-        query
-      end
-
-    from([q, customer: c] in query, join: e in Employee, as: :employee, on: c.rep_id == e.id)
+    if not has_named_binding?(query, :customer) do
+      from(q in query, join: c in Customer, as: :customer, on: q.customer_id == c.id)
+    else
+      query
+    end
   end
 
   defp query_join(query, _), do: query
@@ -171,7 +164,7 @@ defmodule Chinook.Helpers.Invoice do
   end
 
   defp extract_op(key) do
-    # look for the operator as a suffix
+    # separate operator (suffix) and field name
     key
     |> to_string()
     |> String.split("__", parts: 2)
