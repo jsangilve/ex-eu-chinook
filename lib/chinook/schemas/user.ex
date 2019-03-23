@@ -3,6 +3,9 @@ defmodule Chinook.Schemas.User do
 
   import Ecto.Changeset
 
+  alias Chinook.Schemas.Group
+  alias Chinook.Schemas.Permission
+
   # this could also be used to define an enum with `ecto_enum`,
   # but let's keep our list of deps as small as possible.
   # An Ecto.Type could also be defined.
@@ -17,6 +20,9 @@ defmodule Chinook.Schemas.User do
     field(:username, :string)
     field(:email, :string)
     field(:role, :string)
+
+    many_to_many(:groups, Group, join_through: "app_user_group")
+    many_to_many(:permisions, Permission, join_through: "app_user_permission")
 
     timestamps()
   end
