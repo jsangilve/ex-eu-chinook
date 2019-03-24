@@ -23,7 +23,8 @@ defmodule Chinook.Schemas.User do
     field(:role, :string)
 
     many_to_many(:groups, Group, join_through: "app_user_group", on_replace: :delete)
-    many_to_many(:permisions, Permission, join_through: "app_user_permission")
+
+    many_to_many(:permisions, Permission, join_through: "app_user_permission", on_replace: :delete)
 
     # virtual field to put group and user permissions
     field(:all_permissions, {:array, :string}, virtual: true, default: [])
