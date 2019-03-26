@@ -33,7 +33,7 @@ defmodule Chinook.Schemas.User do
   end
 
   def changeset(user, params) do
-    valid = [:username, :email, :role]
+    valid = [:username, :email]
 
     user
     |> cast(params, valid)
@@ -41,8 +41,19 @@ defmodule Chinook.Schemas.User do
     |> validate_change(:role, &validate/2)
   end
 
+  @spec group_member?(Ecto.Changeset.t(), atom()) :: boolean()
+  def group_member?(user, :admin), do: has_group?(user, "admin")
+  def group_member?(user, :supervisor), do: has_group?(user, "supervisor")
+  def group_member?(user, :agent), do: has_group?(user, "agent")
+  def group_member?(user, :customer), do: has_group?(user, "customer")
+  def group_member?(_, _), do: false
+
   #########
   # Helpers
+
+  defp has_group?(%__MODULE__{groups: groups}, group_name) when is_list(groups) do
+    Enum.any?(groups, &(&1.name == group_name))
+  end
 
   defp validate(:role, value) do
     if not valid_role?(value) do
