@@ -89,7 +89,7 @@ defmodule Chinook.TestUtils do
 
     user
     |> Ecto.Changeset.change()
-    |> Ecto.Changeset.put_assoc(:grous, [group | groups])
+    |> Ecto.Changeset.put_assoc(:groups, [group | groups])
     |> Repo.update()
   end
 

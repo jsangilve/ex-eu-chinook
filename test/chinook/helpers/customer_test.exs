@@ -6,7 +6,7 @@ defmodule Chinook.Schemas.CustomerTest do
   use ExUnit.Case, async: true
 
   alias Chinook.Repo
-  alias Chinook.Schemas.{Customer, User, Employee}
+  alias Chinook.Schemas.{Customer, User, Employee, Group, Permission}
   alias Chinook.Helpers.Customer, as: CustomerH
   alias Chinook.TestUtils
 
@@ -14,6 +14,8 @@ defmodule Chinook.Schemas.CustomerTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+
+    TestUtils.setup_groups_perms()
 
     # create user for existent employees
     Employee
@@ -23,19 +25,23 @@ defmodule Chinook.Schemas.CustomerTest do
         from(e in Employee, where: e.reports_to_id == ^employee.id)
         |> Repo.aggregate(:count, :id)
 
-      role =
-        if assistants > 0 do
-          "supervisor"
-        else
-          "agent"
-        end
+      # let's change this test to add permissions instead of a role
+      with {:ok, user} <-
+             TestUtils.create_user(
+               nil,
+               "emp_#{employee.id}",
+               "emp_#{employee.id}@example.com",
+               %{employee_id: employee.id}
+             ) do
+        group =
+          if assistants > 0 do
+            Repo.get_by(Group, name: "supervisor")
+          else
+            Repo.get_by(Group, name: "agent")
+          end
 
-      TestUtils.create_user(
-        role,
-        "employee_#{employee.id}",
-        "employee_#{employee.id}@example.com",
-        %{employee_id: employee.id}
-      )
+        TestUtils.put_user_group(user, group)
+      end
     end)
 
     # create user for existent customers
@@ -65,8 +71,6 @@ defmodule Chinook.Schemas.CustomerTest do
     test "An agent can only get associated customers" do
       # let's user employee 2
       %Employee{user: user} = e = Repo.get(Employee, 4) |> Repo.preload(:user)
-      IO.inspect(e)
-
       assert length(CustomerH.all(user)) == 20
     end
 

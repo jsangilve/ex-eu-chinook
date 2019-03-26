@@ -94,19 +94,6 @@ defmodule Chinook.Helpers.Invoice do
     special_params = Keyword.take(params, @special_params)
     assoc_params = Keyword.take(params, @assoc_params)
 
-    # adding :user access check
-    #    assoc_params =
-    #      case Keyword.get(params, :user) do
-    #        %User{id: user_id, role: "customer"} ->
-    #          [{:user_id, user_id} | assoc_params]
-    #
-    ##        %User{id: user_id, role: "agent"} ->
-    #
-    #
-    #        _ ->
-    #          assoc_params
-    #      end
-
     Invoice
     |> where(^base_params)
     |> query_special_params(special_params)
