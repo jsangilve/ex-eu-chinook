@@ -11,8 +11,7 @@ defmodule Chinook.Helpers.Customer do
 
   @config_current_user "chinook.app_user"
   @config_parameters ["chinook.app_user"]
-  @valid_roles ["admin", "supervisor", "agent", "customer"]
-
+  @valid_roles ["chinook_admin", "chinook_supervisor", "chinook_agent", "chinook_customer"]
 
   @doc """
   Lists customer accessible to the user.
@@ -24,11 +23,15 @@ defmodule Chinook.Helpers.Customer do
   """
   @spec all(Ecto.Schema.t()) :: [Ecto.Schema.t()]
 
-  def all(%User{id: user_id}) do
-    Repo.transaction(fn ->
-      set_local_parameter(@config_current_user, user_id)
-      Repo.all(Customer)
-    end)
+  def all(%User{id: user_id, role: role}) do
+    with {:ok, result} =
+           Repo.transaction(fn ->
+             set_local_role(role)
+             set_local_parameter(@config_current_user, user_id)
+             Repo.all(Customer)
+           end) do
+      result
+    end
   end
 
   #########
@@ -55,7 +58,7 @@ defmodule Chinook.Helpers.Customer do
   end
 
   # set database role for transaction
-  def set_local_role(role) when role in @valid_roles  do
+  def set_local_role(role) when role in @valid_roles do
     sql = "SET LOCAL ROLE #{role}"
     Repo.query!(sql)
   end
