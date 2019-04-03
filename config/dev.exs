@@ -9,6 +9,6 @@ use Mix.Config
 
 config :chinook, Chinook.Repo,
   database: "chinook",
-  username: "jsangil",
+  username: "chinook_app",
   password: "test",
   hostname: "localhost"
