@@ -6,17 +6,14 @@ defmodule Chinook.Schemas.CustomerTest do
   use ExUnit.Case, async: true
 
   alias Chinook.Repo
-  alias Chinook.Schemas.{Customer, User, Employee, Group, Permission}
+  alias Chinook.Schemas.{Customer, Employee}
   alias Chinook.Helpers.Customer, as: CustomerH
   alias Chinook.TestUtils
 
   import Ecto.Query
 
-
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-
-    TestUtils.setup_groups_perms()
 
     # create user for existent employees
     Employee
@@ -26,23 +23,19 @@ defmodule Chinook.Schemas.CustomerTest do
         from(e in Employee, where: e.reports_to_id == ^employee.id)
         |> Repo.aggregate(:count, :id)
 
-      # let's change this test to add permissions instead of a role
-      with {:ok, user} <-
-             TestUtils.create_user(
-               nil,
-               "emp_#{employee.id}",
-               "emp_#{employee.id}@example.com",
-               %{employee_id: employee.id}
-             ) do
-        group =
-          if assistants > 0 do
-            Repo.get_by(Group, name: "supervisor")
-          else
-            Repo.get_by(Group, name: "agent")
-          end
+      role =
+        if assistants > 0 do
+          "chinook_supervisor"
+        else
+          "chinook_agent"
+        end
 
-        TestUtils.put_user_group(user, group)
-      end
+      TestUtils.create_user(
+        role,
+        "emp_#{employee.id}",
+        "emp_#{employee.id}@example.com",
+        %{employee_id: employee.id}
+      )
     end)
 
     # create user for existent customers
@@ -50,7 +43,7 @@ defmodule Chinook.Schemas.CustomerTest do
     |> Repo.all()
     |> Enum.each(fn customer ->
       TestUtils.create_user(
-        "customer",
+        "chinook_customer",
         "customer_#{customer.id}",
         "customer_#{customer.id}@example.com",
         %{customer_id: customer.id}
@@ -63,7 +56,6 @@ defmodule Chinook.Schemas.CustomerTest do
       # supervisor / employee_id 2
       %Employee{user: emp2} = get_employee_user(2)
       %Employee{user: emp6} = get_employee_user(6)
-      
 
       assert length(CustomerH.all(emp2)) == 59
       assert length(CustomerH.all(emp6)) == 0
@@ -77,7 +69,6 @@ defmodule Chinook.Schemas.CustomerTest do
 
     test "A customer can only get itself" do
       %Customer{id: c_id, user: user} = get_customer_user(1)
-
       assert [%Customer{id: ^c_id}] = CustomerH.all(user)
     end
   end

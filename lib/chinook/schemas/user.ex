@@ -6,15 +6,7 @@ defmodule Chinook.Schemas.User do
   alias Chinook.Schemas.Group
   alias Chinook.Schemas.Permission
 
-  # this could also be used to define an enum with `ecto_enum`,
-  # but let's keep our list of deps as small as possible.
-  # An Ecto.Type could also be defined.
-  @valid_roles ["admin", "supervisor", "agent", "customer"]
-
-  @spec valid_role?(atom() | binary()) :: boolean
-  def valid_role?(role) do
-    role in @valid_roles
-  end
+  @valid_roles ["chinook_admin", "chinook_supervisor", "chinook_agent", "chinook_customer"]
 
   schema "app_user" do
     field(:username, :string)
@@ -33,13 +25,20 @@ defmodule Chinook.Schemas.User do
   end
 
   def changeset(user, params) do
-    valid = [:username, :email]
+    valid = [:username, :email, :role]
 
     user
     |> cast(params, valid)
     |> validate_required(valid)
     |> validate_change(:role, &validate/2)
   end
+
+  @spec valid_role?(atom() | binary()) :: boolean
+  def valid_role?(role) do
+    role in @valid_roles
+  end
+
+  defguard is_valid_role(role) when role in @valid_roles
 
   @spec group_member?(Ecto.Changeset.t(), atom()) :: boolean()
   def group_member?(user, :admin), do: has_group?(user, "admin")
