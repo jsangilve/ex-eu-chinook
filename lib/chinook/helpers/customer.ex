@@ -35,12 +35,12 @@ defmodule Chinook.Helpers.Customer do
   # Helpers
 
   # set database config parameter for the current transaction
-  defp set_local_parameter(param, value) when param in @config_parameters do
+  def set_local_parameter(param, value) when param in @config_parameters do
     sql = "SET LOCAL #{param} to #{value}"
     Repo.query!(sql)
   end
 
-  defp set_local_parameter(param, _) do
+  def set_local_parameter(param, _) do
     raise ArgumentError, "Invalid config parameter #{param}"
   end
 
