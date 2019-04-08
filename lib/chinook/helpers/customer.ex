@@ -15,10 +15,8 @@ defmodule Chinook.Helpers.Customer do
   @doc """
   Lists customer accessible to the user.
 
-  It wraps within a tra
-  It creates a transaction to use the current user's
-  role along with
-  to the current user;
+  Creates a transaction that set's the current role and
+  the @config_current.user before getting the list of Customers.
   """
   @spec all(Ecto.Schema.t()) :: [Ecto.Schema.t()]
 
