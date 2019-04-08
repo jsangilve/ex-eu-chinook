@@ -50,7 +50,7 @@ defmodule Chinook.Helpers.Customer do
     Repo.query!(sql)
   end
 
-  def set_local_parameter(param) do
+  def reset_local_parameter(param) do
     raise ArgumentError, "Invalid config parameter #{param}"
   end
 
